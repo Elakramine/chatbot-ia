@@ -14,12 +14,16 @@ if not GROQ_API_KEY:
     st.error("Ajoute ta clé dans un fichier `.env` : `GROQ_API_KEY=...`")
     st.stop()
 
-client = Groq(api_key=GROQ_API_KEY)
+client_groq = Groq(api_key=GROQ_API_KEY)
+
+if OPENAI_API_KEY:
+    import openai
+    openai.api_key = OPENAI_API_KEY
 
 # 🎨 Configuration de la page
 st.set_page_config(page_title="💬 Chatbot IA Ultime", page_icon="💎", layout="wide")
 
-# 💫 Nouveau thème CSS élégant
+# 💫 Thème CSS élégant
 st.markdown("""
 <style>
 [data-testid="stAppViewContainer"] {
@@ -84,37 +88,71 @@ footer { visibility: hidden; }
 
 st.markdown('<div class="title">💎 Chatbot IA Ultime</div>', unsafe_allow_html=True)
 
+# 🧠 Choix du mode IA
+mode = st.sidebar.radio("🧠 Choisis ton IA :", ["💬 Llama (Groq)", "💬 OpenAI (GPT)", "🎨 Générateur d'image"])
+
 # 🧠 Historique des messages
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": "Tu es un assistant brillant, créatif et élégant."}
     ]
 
-# 💬 Affichage des messages
-for msg in st.session_state.messages[1:]:
-    if msg["role"] == "user":
-        st.markdown(f'<div class="user-msg">👤 {msg["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="bot-msg">🤖 {msg["content"]}</div>', unsafe_allow_html=True)
+# 💬 Mode Chat
+if mode in ["💬 Llama (Groq)", "💬 OpenAI (GPT)"]:
+    for msg in st.session_state.messages[1:]:
+        if msg["role"] == "user":
+            st.markdown(f'<div class="user-msg">👤 {msg["content"]}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="bot-msg">🤖 {msg["content"]}</div>', unsafe_allow_html=True)
 
-# ✨ Saisie utilisateur
-if prompt := st.chat_input("Parle-moi..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.markdown(f'<div class="user-msg">👤 {prompt}</div>', unsafe_allow_html=True)
+    if prompt := st.chat_input("Parle-moi..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.markdown(f'<div class="user-msg">👤 {prompt}</div>', unsafe_allow_html=True)
 
-    with st.spinner("✨ Réflexion en cours..."):
-        try:
-            response = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=st.session_state.messages
-            )
-            bot_reply = response.choices[0].message.content.strip()
-        except Exception as e:
-            st.error(f"⚠️ Erreur Chat : {e}")
-            bot_reply = "Désolé, je ne peux pas répondre pour le moment."
+        with st.spinner("✨ Réflexion en cours..."):
+            try:
+                if mode == "💬 Llama (Groq)":
+                    response = client_groq.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=st.session_state.messages
+                    )
+                    bot_reply = response.choices[0].message.content.strip()
+                else:
+                    if not OPENAI_API_KEY:
+                        st.error("⚠️ Clé OpenAI manquante.")
+                        bot_reply = "Désolé, je ne peux pas répondre sans clé OpenAI."
+                    else:
+                        response = openai.ChatCompletion.create(
+                            model="gpt-4",
+                            messages=st.session_state.messages
+                        )
+                        bot_reply = response.choices[0].message["content"].strip()
+            except Exception as e:
+                st.error(f"⚠️ Erreur Chat : {e}")
+                bot_reply = "Désolé, je ne peux pas répondre pour le moment."
 
-    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-    st.markdown(f'<div class="bot-msg">🤖 {bot_reply}</div>', unsafe_allow_html=True)
+        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        st.markdown(f'<div class="bot-msg">🤖 {bot_reply}</div>', unsafe_allow_html=True)
+
+# 🎨 Mode Image
+elif mode == "🎨 Générateur d'image":
+    st.markdown("### 🎨 Décris l'image que tu veux générer :")
+    img_prompt = st.text_input("🖌️ Prompt image")
+    if img_prompt and OPENAI_API_KEY:
+        with st.spinner("🖼️ Génération de l'image..."):
+            try:
+                result = openai.Image.create(
+                    prompt=img_prompt,
+                    n=1,
+                    size="1024x1024"
+                )
+                image_url = result["data"][0]["url"]
+                st.image(image_url, caption=img_prompt)
+            except Exception as e:
+                st.error(f"⚠️ Erreur Image : {e}")
+    elif img_prompt:
+        st.warning("⚠️ Clé OpenAI manquante : impossible de générer une image.")
 
 # 🌟 Footer
-st.markdown('<div class="footer">✨ Conçu avec style et élégance • Clé GROQ sécurisée</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">✨ Conçu avec style et élégance • IA sélectionnable • Clés sécurisées</div>', unsafe_allow_html=True)
+
