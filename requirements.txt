@@ -1,4 +1,4 @@
 streamlit
-groq
+groq-python
+openai
 python-dotenv
-
