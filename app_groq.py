@@ -1,117 +1,87 @@
+# app_groq.py
 import os
 import streamlit as st
 from groq import Groq
 from dotenv import load_dotenv
+import openai
 
-# 🔐 Chargement de la clé API
+# 🔐 Chargement des clés API
 load_dotenv()
-API_KEY = os.getenv("GROQ_API_KEY")
-if not API_KEY:
-    st.set_page_config(page_title="🔐 Clé API manquante", page_icon="⚠️")
-    st.title("🔐 Clé API GROQ manquante")
-    st.error("Ajoute ta clé dans un fichier `.env` : `GROQ_API_KEY=...`")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+if not GROQ_API_KEY or not OPENAI_API_KEY:
+    st.set_page_config(page_title="🔐 Clés API manquantes", page_icon="⚠️")
+    st.title("🔐 Clés API manquantes")
+    st.error("Ajoute GROQ_API_KEY et OPENAI_API_KEY dans ton fichier `.env`")
     st.stop()
 
-client = Groq(api_key=API_KEY)
+client = Groq(api_key=GROQ_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
-# 🎨 Configuration de la page
-st.set_page_config(page_title="💬 Chatbot IA Ultime", page_icon="💎", layout="wide")
-
-# 💫 Nouveau thème CSS
+# 🎨 Page config + titre
+st.set_page_config(page_title="✨ Chatbot & Image IA", page_icon="💎", layout="wide")
 st.markdown("""
 <style>
-body {
-    font-family: 'Segoe UI', sans-serif;
-}
-[data-testid="stAppViewContainer"] {
-    background: linear-gradient(to bottom right, #1e1e2f, #2a2a3d);
-    color: #f0f0f0;
-}
-.title {
-    text-align: center;
-    font-size: 2.8rem;
-    margin: 30px 0 10px;
-    font-weight: bold;
-    color: #ffffff;
-    text-shadow: 0 0 10px #6b5b95;
-}
-.user-msg, .bot-msg {
-    padding: 16px 20px;
-    margin: 12px 0;
-    border-radius: 20px;
-    max-width: 80%;
-    font-size: 1.05rem;
-    line-height: 1.5;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.05);
-}
-.user-msg {
-    background: #4b4b6b;
-    color: #fff;
-    margin-left: auto;
-    text-align: right;
-}
-.bot-msg {
-    background: #3a3a55;
-    color: #e0e0e0;
-    margin-right: auto;
-    text-align: left;
-}
-.stChatInput input {
-    background: rgba(40, 40, 60, 0.8);
-    color: #fff;
-    border: 1px solid #6b5b95;
-    border-radius: 30px;
-    padding: 14px 24px;
-    font-size: 1.1rem;
-    width: 100%;
-}
-.stChatInput input:focus {
-    border-color: #feb47b;
-    box-shadow: 0 0 0 3px rgba(254,180,123,0.4);
-    outline: none;
-}
-.footer {
-    text-align: center;
-    color: rgba(255,255,255,0.4);
-    font-size: 0.85rem;
-    margin-top: 40px;
-    padding: 10px;
-}
-footer { visibility: hidden; }
+body {background: #1a1a2e; color:white; font-family: 'Segoe UI', sans-serif;}
+.title {text-align:center; font-size:3rem; margin:20px 0; color:#91eae4; font-weight:900;}
+.user-msg {background:#ff7e5f; padding:12px 18px; border-radius:20px; margin:10px 0; text-align:right; max-width:80%; margin-left:auto;}
+.bot-msg {background:#86a8e7; padding:12px 18px; border-radius:20px; margin:10px 0; text-align:left; max-width:80%; margin-right:auto; color:#0f0f14;}
+.stButton button {background:#91eae4; color:#0f0f14; border-radius:20px; padding:8px 18px;}
 </style>
 """, unsafe_allow_html=True)
+st.markdown('<div class="title">💎 Chatbot & Image IA</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="title">💎 Chatbot IA Ultime</div>', unsafe_allow_html=True)
-
-# 🧠 Initialisation historique
+# 🧠 Historique
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "system", "content": "Tu es un assistant brillant, créatif, et toujours élégant dans tes réponses."}
+        {"role": "system", "content": "Tu es un assistant brillant, créatif et élégant."}
     ]
 
-# 💬 Affichage des messages
-for msg in st.session_state.messages[1:]:
-    if msg["role"] == "user":
-        st.markdown(f'<div class="user-msg">👤 {msg["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="bot-msg">🤖 {msg["content"]}</div>', unsafe_allow_html=True)
+# 💬 Chat
+chat_col, image_col = st.columns(2)
 
-# ✨ Saisie utilisateur
-if prompt := st.chat_input("Parle-moi..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.markdown(f'<div class="user-msg">👤 {prompt}</div>', unsafe_allow_html=True)
+with chat_col:
+    st.subheader("💬 Chat IA")
+    for msg in st.session_state.messages[1:]:
+        if msg["role"] == "user":
+            st.markdown(f'<div class="user-msg">👤 {msg["content"]}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="bot-msg">🤖 {msg["content"]}</div>', unsafe_allow_html=True)
 
-    with st.spinner("✨ Réflexion en cours..."):
-        try:
-            response = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=st.session_state.messages
-            )
-            bot_reply = response.choices[0].message.content.strip()
-        except Exception as e:
-            st.error(f"⚠️ Erreur : {e}")
-            bot_reply = "Désolé, je ne peux pas répondre pour le moment."
+    if prompt := st.chat_input("Parle-moi..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.markdown(f'<div class="user-msg">👤 {prompt}</div>', unsafe_allow_html=True)
+        with st.spinner("✨ Réflexion en cours..."):
+            try:
+                response = client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=st.session_state.messages
+                )
+                bot_reply = response.choices[0].message.content.strip()
+            except Exception as e:
+                st.error(f"⚠️ Erreur Chat: {e}")
+                bot_reply = "Désolé, je ne peux pas répondre pour le moment."
+        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        st.markdown(f'<div class="bot-msg">🤖 {bot_reply}</div>', unsafe_allow_html=True)
 
-    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-    st.markdown(f'<div class="bot-msg">🤖 {bot_reply}</div>', unsafe_allow_html=True)
+# 🖼 Génération d'image
+with image_col:
+    st.subheader("🖼 Génération d'image")
+    image_prompt = st.text_input("Décris l'image que tu veux générer")
+    if st.button("Générer l'image"):
+        if image_prompt:
+            with st.spinner("🖌 Création de l'image en cours..."):
+                try:
+                    result = openai.Image.create(
+                        prompt=image_prompt,
+                        n=1,
+                        size="512x512"
+                    )
+                    image_url = result['data'][0]['url']
+                    st.image(image_url, use_column_width=True)
+                except Exception as e:
+                    st.error(f"⚠️ Erreur Image: {e}")
+        else:
+            st.warning("💡 Écris un prompt pour générer l'image.")
+
