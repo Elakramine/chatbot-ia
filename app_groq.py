@@ -2,6 +2,7 @@ import os
 import streamlit as st
 from groq import Groq
 from dotenv import load_dotenv
+
 # 🔐 Chargement de la clé API
 load_dotenv()
 API_KEY = os.getenv("GROQ_API_KEY")
@@ -14,80 +15,67 @@ if not API_KEY:
 client = Groq(api_key=API_KEY)
 
 # 🎨 Configuration de la page
-st.set_page_config(page_title="✨ Chatbot IA Ultime", page_icon="💎", layout="wide")
+st.set_page_config(page_title="💬 Chatbot IA Ultime", page_icon="💎", layout="wide")
 
-# 💫 CSS personnalisé
+# 💫 Nouveau thème CSS
 st.markdown("""
 <style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+}
 [data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at 10% 20%, #0a0a0a, #1b1b2f, #2c2c44);
-    color: #e0e0e0;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(to bottom right, #1e1e2f, #2a2a3d);
+    color: #f0f0f0;
 }
 .title {
     text-align: center;
-    font-size: 3rem;
-    margin: 25px 0;
-    background: linear-gradient(90deg, #6b5b95, #feb47b, #355c7d);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-weight: 900;
-    animation: glow 2s infinite alternate;
-    text-shadow: 0 0 8px rgba(255,255,255,0.1);
+    font-size: 2.8rem;
+    margin: 30px 0 10px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 0 10px #6b5b95;
 }
-@keyframes glow {
-    from { text-shadow: 0 0 10px #fff, 0 0 15px #6b5b95; }
-    to   { text-shadow: 0 0 15px #fff, 0 0 25px #355c7d, 0 0 30px #feb47b; }
+.user-msg, .bot-msg {
+    padding: 16px 20px;
+    margin: 12px 0;
+    border-radius: 20px;
+    max-width: 80%;
+    font-size: 1.05rem;
+    line-height: 1.5;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.05);
 }
 .user-msg {
-    background: linear-gradient(135deg, #3e3e50, #5c5c7a);
+    background: #4b4b6b;
     color: #fff;
-    padding: 16px 20px;
-    border-radius: 24px 24px 6px 24px;
-    margin: 14px 0;
-    text-align: right;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    max-width: 85%;
     margin-left: auto;
-    font-size: 1.05rem;
-    line-height: 1.5;
-    border: 1px solid rgba(255,255,255,0.05);
+    text-align: right;
 }
 .bot-msg {
-    background: linear-gradient(135deg, #2c3e50, #34495e);
-    color: #f0f0f0;
-    padding: 16px 20px;
-    border-radius: 24px 24px 24px 6px;
-    margin: 14px 0;
-    text-align: left;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    max-width: 85%;
+    background: #3a3a55;
+    color: #e0e0e0;
     margin-right: auto;
-    font-size: 1.05rem;
-    line-height: 1.5;
-    border: 1px solid rgba(255,255,255,0.05);
+    text-align: left;
 }
 .stChatInput input {
-    background: rgba(30, 30, 50, 0.7);
+    background: rgba(40, 40, 60, 0.8);
     color: #fff;
-    border: 1px solid rgba(134, 168, 231, 0.3);
+    border: 1px solid #6b5b95;
     border-radius: 30px;
     padding: 14px 24px;
     font-size: 1.1rem;
-    backdrop-filter: blur(8px);
-    transition: all 0.3s ease;
+    width: 100%;
 }
 .stChatInput input:focus {
-    border-color: #6b5b95;
-    box-shadow: 0 0 0 3px rgba(107,91,149,0.4);
+    border-color: #feb47b;
+    box-shadow: 0 0 0 3px rgba(254,180,123,0.4);
     outline: none;
 }
 .footer {
     text-align: center;
     color: rgba(255,255,255,0.4);
     font-size: 0.85rem;
-    margin-top: 30px;
+    margin-top: 40px;
     padding: 10px;
 }
 footer { visibility: hidden; }
@@ -101,20 +89,6 @@ if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": "Tu es un assistant brillant, créatif, et toujours élégant dans tes réponses."}
     ]
-
-# 🔄 Réinitialisation
-if st.sidebar.button("🔄 Réinitialiser la conversation"):
-    st.session_state.messages = [
-        {"role": "system", "content": "Tu es un assistant brillant, créatif, et toujours élégant dans tes réponses."}
-    ]
-    st.experimental_rerun()
-
-# 🧠 Choix du modèle
-model_choice = st.sidebar.selectbox("🧠 Choisis ton modèle IA", [
-    "llama-3.1-8b-instant",
-    "mixtral-8x7b",
-    "gemma-7b-it"
-])
 
 # 💬 Affichage des messages
 for msg in st.session_state.messages[1:]:
@@ -131,7 +105,7 @@ if prompt := st.chat_input("Parle-moi..."):
     with st.spinner("✨ Réflexion en cours..."):
         try:
             response = client.chat.completions.create(
-                model=model_choice,
+                model="llama-3.1-8b-instant",
                 messages=st.session_state.messages
             )
             bot_reply = response.choices[0].message.content.strip()
@@ -141,7 +115,3 @@ if prompt := st.chat_input("Parle-moi..."):
 
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
     st.markdown(f'<div class="bot-msg">🤖 {bot_reply}</div>', unsafe_allow_html=True)
-
-# 🌟 Footer
-st.markdown('<div class="footer">✨ Chatbot IA Ultime • Clé API sécurisée</div>', unsafe_allow_html=True)
-
